@@ -71,22 +71,28 @@ hsi_plot_raster_rgb <- function(
     ggplot2::waiver()
   }
 
+  terra::RGB(x) <- c(1, 2, 3)
   x_rgb <- terra::colorize(
     x,
     to = "col",
     stretch = if (is.null(stretch)) NULL else stretch
   )
 
+  x_rgb_cols <- coltab(x_rgb)
+  x_rgb_hex <- rgb(x_rgb_cols[[1]][, 2], x_rgb_cols[[1]][, 3], x_rgb_cols[[1]][, 4], maxColorValue = 255)
+  names(x_rgb_hex) <- x_rgb_cols[[1]][, 1]
+
   plot <- ggplot2::ggplot(
     x_rgb,
-    ggplot2::aes(x, y, fill = value),
+    ggplot2::aes(x, y, fill = as.factor(value)),
     pivot = TRUE
   ) +
     ggplot2::geom_raster() +
-    ggplot2::scale_fill_identity() +
+    ggplot2::scale_fill_manual(values = x_rgb_hex) +
     ggplot2::coord_fixed(expand = FALSE) +
     ggplot2::scale_y_reverse(labels = label_fun) +
-    ggplot2::labs(x = "", y = "")
+    ggplot2::labs(x = "", y = "") +
+    ggplot2::guides(fill = "none")
 
   plot
 }
