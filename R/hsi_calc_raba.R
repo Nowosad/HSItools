@@ -12,21 +12,21 @@
 #'
 #' @description
 #' Calculate Relative Absorption Band Area (RABA), which quantifies the total
-#' absorption across a spectral feature by summing band-by-band RABD calculations.
-#' Implementation follows Butz et al. (2015) formula in HSI scanning manual.
+#' absorption across a spectral feature as the area between the reflectance
+#' spectrum and its linear continuum.
 #'
 #' @details
-#' RABA extends the RABD concept from a single point to the entire absorption
-#' feature. The method calculates RABD at each wavelength between the continuum
-#' edges and sums them. The continuum is calculated using linear interpolation.
+#' The continuum is linearly interpolated between the two continuum edges. The
+#' signed area between the continuum and reflectance spectrum is then calculated
+#' with the trapezoidal rule using the actual wavelength spacing.
 #'
 #' This approach:
 #' - Uses the same continuum concept as \code{\link{hsi_calc_rabd}}
 #' - Integrates across the entire absorption feature
-#' - Is bandwidth-independent (works with any spectral resolution)
+#' - Accounts for unequal spacing between spectral bands
 #' - Provides a measure of total absorption strength
 #'
-#' @return A terra SpatRaster with RABA values
+#' @return A terra SpatRaster with signed RABA values in reflectance-nm.
 #'
 #' @seealso
 #' \code{\link{hsi_calc_rabd}} for single-point absorption depth
@@ -91,6 +91,12 @@ hsi_calc_raba <- function(
   # Subset to bands in range
   x_range <- terra::subset(x, band_range)
 
+  # Get the wavelengths in the range
+  range_wavelengths <- as.numeric(terra::names(x_range))
+  wavelength_fraction <- (range_wavelengths - range_wavelengths[1]) /
+    (range_wavelengths[length(range_wavelengths)] - range_wavelengths[1])
+  band_widths <- diff(range_wavelengths)
+
   # Define the per-pixel calculation function
   calc_raba_pixel <- \(pixel_values) {
     # Handle NA values
@@ -98,32 +104,18 @@ hsi_calc_raba <- function(
       return(NA_real_)
     }
 
-    # Extract edge reflectances
-    r_start <- pixel_values[1]
-    r_end <- pixel_values[length(pixel_values)]
+    # Interpolate the continuum at each wavelength
+    continuum <- pixel_values[1] +
+      (pixel_values[length(pixel_values)] - pixel_values[1]) *
+        wavelength_fraction
 
-    # Number of bands (excluding end point, following Butz formula)
-    n_bands <- length(pixel_values) - 1
-
-    # Calculate sum of RABDs using Butz formula
-    rabd_sum <- purrr::map_dbl(
-      0:(n_bands - 1),
-      \(i) {
-        # Linear interpolation for continuum at position i
-        continuum_i <- ((r_end - r_start) / n_bands) * i + r_start
-
-        # RABD at position i: continuum / actual reflectance
-        # Handle division by zero
-        if (pixel_values[i + 1] == 0) {
-          return(0)
-        }
-
-        continuum_i / pixel_values[i + 1]
-      }
-    ) |>
-      sum()
-
-    return(rabd_sum)
+    # Integrate the signed area with the trapezoidal rule
+    absorption <- continuum - pixel_values
+    last_band <- length(absorption)
+    sum(
+      band_widths *
+        (absorption[-last_band] + absorption[-1]) / 2
+    )
   }
 
   # Apply function to each pixel
