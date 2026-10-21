@@ -48,18 +48,14 @@
 #' }
 #'
 #' @importFrom rlang .data
-#' 
+#'
 #' @export
 hsi_check_gcp <- function(
   x,
   verbose = FALSE
 ) {
   # Validate inputs
-  if (!inherits(x, "data.frame")) {
-    cli::cli_abort(
-      "{.arg x} must be a data frame."
-    )
-  }
+  check_data_frame(x)
 
   # Validate columns
   check_has_cols(x, cols = c("source_x", "source_y", "target_x", "target_y"))
@@ -67,14 +63,16 @@ hsi_check_gcp <- function(
   # Check minimum of 3 GCP
   if (nrow(x) < 3) {
     cli::cli_abort(
-      "Need at least 3 matched GCPs, found {nrow(x)}."
+      "Need at least 3 matched GCPs, found {nrow(x)}.",
+      class = "hsitools_error"
     )
   }
 
   # Check for collinear GCPs
   if (qr(cbind(1, x$source_x, x$source_y))$rank < 3) {
     cli::cli_abort(
-      "GCPs are collinear and affine transform cannot be fit."
+      "GCPs are collinear and affine transform cannot be fit.",
+      class = "hsitools_error"
     )
   }
 
@@ -107,7 +105,8 @@ hsi_check_gcp <- function(
 
   if (rmse > 5) {
     cli::cli_warn(
-      "RMSE > 5 pixels. Check GCP digitization quality."
+      "RMSE > 5 pixels. Check GCP digitization quality.",
+      class = "hsitools_warning"
     )
   }
 

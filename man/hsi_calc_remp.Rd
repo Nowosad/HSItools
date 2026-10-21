@@ -8,6 +8,7 @@ hsi_calc_remp(
   x,
   search_range = c(660, 680),
   index_name = NULL,
+  cores = 1,
   filename = "",
   overwrite = FALSE,
   ...
@@ -21,6 +22,8 @@ derivative of reflectance. Compute with \code{\link[=hsi_smooth_savgol]{hsi_smoo
 search for the red-edge minimum point. Default \code{c(660, 680)}.}
 
 \item{index_name}{Character. Name for the output layer. Default \code{NULL}.}
+
+\item{cores}{Positive integer. Number of parallel cores. Default \code{1}.}
 
 \item{filename}{Character. Output filename. Default \code{""} keeps result in memory.}
 
@@ -48,6 +51,11 @@ The algorithm:
 derivative equals zero.
 \item Falls back to the wavelength nearest zero if no crossing is found.
 }
+
+Setting \code{cores} above \code{1} hands the per-pixel zero-crossing search to
+\code{\link[terra:app]{terra::app()}}'s own cluster of worker processes, which splits the raster
+by write block. Returns flatten well before the core count is exhausted, as
+the output write stays serial.
 }
 \examples{
 \dontrun{
@@ -83,6 +91,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_difference]{hsi_calc_difference()}},
 \code{\link[=hsi_calc_mnf]{hsi_calc_mnf()}},
 \code{\link[=hsi_calc_ndi]{hsi_calc_ndi()}},
+\code{\link[=hsi_calc_preview]{hsi_calc_preview()}},
 \code{\link[=hsi_calc_raba]{hsi_calc_raba()}},
 \code{\link[=hsi_calc_rabd]{hsi_calc_rabd()}},
 \code{\link[=hsi_calc_ratio]{hsi_calc_ratio()}},
@@ -93,6 +102,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_rsd]{hsi_calc_rsd()}},
 \code{\link[=hsi_calc_stretch]{hsi_calc_stretch()}},
 \code{\link[=hsi_destripe]{hsi_destripe()}},
+\code{\link[=hsi_mask]{hsi_mask()}},
 \code{\link[=hsi_remove_continuum]{hsi_remove_continuum()}},
 \code{\link[=hsi_smooth_median]{hsi_smooth_median()}},
 \code{\link[=hsi_smooth_savgol]{hsi_smooth_savgol()}},

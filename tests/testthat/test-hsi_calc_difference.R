@@ -1,13 +1,5 @@
 # Test band difference calculation ----
 
-## Setup ----
-test_reflectance <- terra::rast(
-  system.file(
-    package = "HSItools",
-    "testdata/products/REFLECTANCE_testdata.tif"
-  )
-)
-
 # ── Output type ──────────────────────────────────────────────────────────────
 
 test_that("hsi_calc_difference returns a SpatRaster", {
@@ -146,6 +138,13 @@ test_that("hsi_calc_difference errors when file exists and overwrite = FALSE", {
 })
 
 # ── Input validation ─────────────────────────────────────────────────────────
+
+test_that("hsi_calc_difference validates filename and overwrite", {
+  expect_write_tail_validated(
+    hsi_calc_difference,
+    list(x = test_reflectance, bands = c(570, 690))
+  )
+})
 
 test_that("hsi_calc_difference errors with non-SpatRaster input", {
   expect_error(

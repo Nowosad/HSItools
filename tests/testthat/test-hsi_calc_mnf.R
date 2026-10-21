@@ -8,13 +8,6 @@
 ## Setup ----
 skip_if_not_installed("spacetime")
 
-test_reflectance <- terra::rast(
-  system.file(
-    package = "HSItools",
-    "testdata/products/REFLECTANCE_testdata.tif"
-  )
-)
-
 # Subset to 8 bands so ncell (81) > nlyr (8)
 test_8band <- terra::subset(test_reflectance, 1:8)
 
@@ -84,12 +77,28 @@ test_that("hsi_calc_mnf errors when ncell <= nlyr", {
   # Standard 9x9x101 fixture has 81 cells and 101 bands — fewer pixels than bands
   expect_error(
     hsi_calc_mnf(x = test_reflectance),
-    "not enough pixels"
+    "not enough pixels",
+    class = "hsitools_error"
   )
 })
 
 test_that("hsi_calc_mnf errors when trim is not length 1", {
   expect_error(hsi_calc_mnf(x = test_8band, trim = c(2L, 3L)))
+})
+
+test_that("hsi_calc_mnf errors when valid pixels are fewer than bands", {
+  # A masked raster passes the cell count check (81 cells > 8 bands) while
+  # holding only 5 pixels that carry data.
+  sparse_values <- terra::values(test_8band)
+  sparse_values[6:terra::ncell(test_8band), ] <- NA
+
+  sparse <- terra::setValues(test_8band, sparse_values)
+
+  expect_error(
+    hsi_calc_mnf(x = sparse),
+    "not enough valid pixels",
+    class = "hsitools_error"
+  )
 })
 
 # ── Trim behaviour ────────────────────────────────────────────────────────────
@@ -108,7 +117,8 @@ test_that("hsi_calc_mnf errors when trim removes all bands", {
   # trim = 4L on 8-band raster leaves 0 bands
   expect_error(
     hsi_calc_mnf(x = test_8band, trim = 4L),
-    "no layers left"
+    "no layers left",
+    class = "hsitools_error"
   )
 })
 

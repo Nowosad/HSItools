@@ -21,9 +21,6 @@
 #' Resolution, layer count, and layer names (wavelengths) must be identical
 #' across all inputs — the function aborts if any mismatch is detected.
 #'
-#' @seealso
-#' [`hsi_bind_layers()`] for concatenation along the spectral (layer) axis.
-#'
 #' @examples
 #' \dontrun{
 #' sections <- list(section_01, section_02, section_03, section_04)
@@ -38,25 +35,14 @@ hsi_bind_rows <- function(
   ...
 ) {
   # Validate inputs
-  if (!is.list(x)) {
-    cli::cli_abort(
-      "{.arg x} must be a {.cls list} of {.cls SpatRaster} objects, not {.cls {class(x)[[1]]}}."
-    )
-  }
+  check_spatraster_list(x)
 
   if (length(x) < 2) {
     cli::cli_abort(
-      "{.arg x} must contain at least 2 {.cls SpatRaster} objects, not {length(x)}."
+      "{.arg x} must contain at least 2 {.cls SpatRaster} objects, not {length(x)}.",
+      class = "hsitools_error"
     )
   }
-
-  purrr::iwalk(x, \(r, i) {
-    if (!inherits(r, "SpatRaster")) {
-      cli::cli_abort(
-        "Element {i} of {.arg x} must be a {.cls SpatRaster}, not {.cls {class(r)[[1]]}}."
-      )
-    }
-  })
 
   # Validate consistent layer count
   n_layers <- purrr::map_int(x, terra::nlyr)
@@ -66,7 +52,8 @@ hsi_bind_rows <- function(
       c(
         "All elements of {.arg x} must have the same number of layers.",
         "i" = "Found: {.val {unique(n_layers)}}."
-      )
+      ),
+      class = "hsitools_error"
     )
   }
 
@@ -80,7 +67,8 @@ hsi_bind_rows <- function(
       c(
         "All elements of {.arg x} must have identical layer names.",
         "i" = "Mismatch in element{?s}: {.val {mismatched}}."
-      )
+      ),
+      class = "hsitools_error"
     )
   }
 
@@ -94,9 +82,14 @@ hsi_bind_rows <- function(
       c(
         "All elements of {.arg x} must have the same spatial resolution.",
         "i" = "Mismatch in element{?s}: {.val {mismatched}}."
-      )
+      ),
+      class = "hsitools_error"
     )
   }
+
+  rlang::check_string(filename)
+
+  rlang::check_bool(overwrite)
 
   # Compute geometry for each element
   geom <- tibble::tibble(

@@ -2,7 +2,7 @@
 % Please edit documentation in R/hsi_calc_reflectance.R
 \name{hsi_calc_reflectance}
 \alias{hsi_calc_reflectance}
-\title{Hyperspectral reflectance raster}
+\title{Calculate hyperspectral reflectance}
 \usage{
 hsi_calc_reflectance(
   x,
@@ -37,8 +37,7 @@ reference and specimen capture, in that order. Default \code{c(1, 1)} assumes
 equal integration times.}
 
 \item{in_memory}{Logical. Process entirely in RAM. Default \code{FALSE}.
-Set \code{TRUE} only when data fits comfortably in available memory. When
-\code{FALSE}, writes one temporary file per band.}
+Set \code{TRUE} only when data fits comfortably in available memory.}
 
 \item{filename}{Character. Output filename. Default \code{""} keeps result in memory.}
 
@@ -47,7 +46,7 @@ Set \code{TRUE} only when data fits comfortably in available memory. When
 \item{...}{Additional arguments passed to \code{\link[terra:writeRaster]{terra::writeRaster()}}.}
 }
 \value{
-A \code{\link[terra:SpatRaster-class]{SpatRaster}} with normalized reflectance values.
+A \code{\link[terra:SpatRaster-class]{SpatRaster}} with reflectance values.
 }
 \description{
 Convert raw hyperspectral imaging data (digital numbers) to calibrated
@@ -58,6 +57,22 @@ the essential first step in hyperspectral data processing.
 All inputs must share the same spatial resolution, number of bands,
 wavelength labels, and compatible spatial extents. When reading \code{.raw} ESRI
 data, load with \code{terra::rast(x, noflip = TRUE)}.
+
+Raw captures are typically integer rasters, where a value at the datatype
+maximum is a saturated reading rather than missing data. Subsetting such a
+capture with \code{\link[terra:crop]{terra::crop()}} — or any operation that writes an integer copy
+to disk — makes terra reserve the datatype maximum as the NoData value, so
+saturated readings are read back as \code{NA}. Whether this happens depends on
+whether terra materialises the result to a file, so the same script can give
+different answers on different machines and terra versions.
+
+Set the region of interest with \code{\link[terra:window]{terra::window()}} on \code{x}, \code{whiteref} and
+\code{darkref} instead: it reads lazily from the source and writes nothing.
+References are usually windowed in the column direction only, since they are
+collapsed to per-column means. If a physical subset must be written, write it
+with a float datatype (for example \code{datatype = "FLT4S"} passed to
+\code{\link[terra:writeRaster]{terra::writeRaster()}} or through the \code{wopt} argument of \code{\link[terra:crop]{terra::crop()}}) so
+that no integer value is repurposed as NoData.
 
 Three calibration paths are supported:
 
@@ -71,8 +86,8 @@ strategy.
 specimen is overexposed relative to the white reference to maximise signal.
 Each subtraction uses the dark reference captured at the matching
 integration time. This is the recommended approach for dual-exposure
-scanning. For example, Lumo Scanner always captures a dark reference per session, so
-matched darks should be available for all standard workflows.
+scanning. Many scanners capture a dark reference per session, so matched
+darks are typically available for standard workflows.
 
 \deqn{R(\lambda) = \frac{specimen - dark_{specimen}}{white - dark_{white}}
   \times \frac{t_{white}}{t_{specimen}}}
@@ -81,7 +96,7 @@ matched darks should be available for all standard workflows.
 dual-exposure workflows when only the white-session dark reference is
 available. The dark reference is scaled by the integration time ratio
 before numerator subtraction. This assumes dark current scales linearly
-with integration time. In practice, some detectors (SWIR) have a large
+with integration time. In practice, some detectors have a large
 fixed-pattern noise component that does not scale with exposure time.
 Scaling overestimates the specimen dark current, producing severely
 degraded reflectance — often negative across entire spectra. Use only as
@@ -133,6 +148,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_difference]{hsi_calc_difference()}},
 \code{\link[=hsi_calc_mnf]{hsi_calc_mnf()}},
 \code{\link[=hsi_calc_ndi]{hsi_calc_ndi()}},
+\code{\link[=hsi_calc_preview]{hsi_calc_preview()}},
 \code{\link[=hsi_calc_raba]{hsi_calc_raba()}},
 \code{\link[=hsi_calc_rabd]{hsi_calc_rabd()}},
 \code{\link[=hsi_calc_ratio]{hsi_calc_ratio()}},
@@ -143,6 +159,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_rsd]{hsi_calc_rsd()}},
 \code{\link[=hsi_calc_stretch]{hsi_calc_stretch()}},
 \code{\link[=hsi_destripe]{hsi_destripe()}},
+\code{\link[=hsi_mask]{hsi_mask()}},
 \code{\link[=hsi_remove_continuum]{hsi_remove_continuum()}},
 \code{\link[=hsi_smooth_median]{hsi_smooth_median()}},
 \code{\link[=hsi_smooth_savgol]{hsi_smooth_savgol()}},

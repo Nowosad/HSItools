@@ -40,6 +40,18 @@ Subset a hyperspectral raster to three bands and apply a linear or
 histogram-equalized stretch. Supports predefined band combinations and
 custom wavelength selection.
 }
+\details{
+The stretch is computed over the whole frame, so the tone curve depends on
+everything in it, including background, mounting hardware and labels. Two
+captures of the same specimen framed against different backgrounds therefore
+receive different tone curves, and \strong{the resulting previews are not
+comparable between captures}. Treat them as a look at one capture, never as
+evidence that two captures differ.
+
+To compare captures visually, crop each to the region of interest first and
+stretch the crops, so the tone curve is derived only from the pixels being
+compared.
+}
 \examples{
 \dontrun{
 x <- terra::rast("REFLECTANCE_testdata.tif")
@@ -64,6 +76,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_difference]{hsi_calc_difference()}},
 \code{\link[=hsi_calc_mnf]{hsi_calc_mnf()}},
 \code{\link[=hsi_calc_ndi]{hsi_calc_ndi()}},
+\code{\link[=hsi_calc_preview]{hsi_calc_preview()}},
 \code{\link[=hsi_calc_raba]{hsi_calc_raba()}},
 \code{\link[=hsi_calc_rabd]{hsi_calc_rabd()}},
 \code{\link[=hsi_calc_ratio]{hsi_calc_ratio()}},
@@ -74,6 +87,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_rmedian]{hsi_calc_rmedian()}},
 \code{\link[=hsi_calc_rsd]{hsi_calc_rsd()}},
 \code{\link[=hsi_destripe]{hsi_destripe()}},
+\code{\link[=hsi_mask]{hsi_mask()}},
 \code{\link[=hsi_remove_continuum]{hsi_remove_continuum()}},
 \code{\link[=hsi_smooth_median]{hsi_smooth_median()}},
 \code{\link[=hsi_smooth_savgol]{hsi_smooth_savgol()}},

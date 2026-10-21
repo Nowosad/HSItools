@@ -10,6 +10,7 @@ hsi_smooth_savgol(
   n = p + 13 - p\%\%2,
   m = 0,
   ts = 1,
+  cores = 1,
   filename = "",
   overwrite = FALSE,
   ...
@@ -27,6 +28,8 @@ than \code{p}. Typically 5–15. Default computed from \code{p}.}
 derivative. Default \code{0}.}
 
 \item{ts}{Numeric. Sampling interval for derivative calculations. Default \code{1}.}
+
+\item{cores}{Positive integer. Number of parallel cores. Default \code{1}.}
 
 \item{filename}{Character. Output filename. Default \code{""} keeps result in memory.}
 
@@ -55,10 +58,16 @@ by increasing \code{m}. Note that edge bands equal to roughly half the window
 size are unreliable for derivatives — always compute on the full spectrum
 before subsetting to a wavelength range of interest.
 
-Pixels with \code{NA} values will cause the function to fail. For full-raster
-processing, \code{\link[=hsi_tiled]{hsi_tiled()}} can distribute the workload across parallel
-workers. Requires the
+Pixels with any \code{NA} value in their spectrum return \code{NA} in every band
+rather than failing — masked and background pixels pass through cleanly.
+For full-raster processing, \code{\link[=hsi_tiled]{hsi_tiled()}} can distribute the workload
+across parallel workers. Requires the
 \href{https://CRAN.R-project.org/package=gsignal}{\code{gsignal}} package.
+
+Setting \code{cores} above \code{1} hands the per-pixel filter to
+\code{\link[terra:app]{terra::app()}}'s own cluster of worker processes, which splits the raster
+by write block. Returns flatten well before the core count is exhausted, as
+the output write stays serial.
 }
 \examples{
 \dontrun{
@@ -80,6 +89,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_difference]{hsi_calc_difference()}},
 \code{\link[=hsi_calc_mnf]{hsi_calc_mnf()}},
 \code{\link[=hsi_calc_ndi]{hsi_calc_ndi()}},
+\code{\link[=hsi_calc_preview]{hsi_calc_preview()}},
 \code{\link[=hsi_calc_raba]{hsi_calc_raba()}},
 \code{\link[=hsi_calc_rabd]{hsi_calc_rabd()}},
 \code{\link[=hsi_calc_ratio]{hsi_calc_ratio()}},
@@ -91,6 +101,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_rsd]{hsi_calc_rsd()}},
 \code{\link[=hsi_calc_stretch]{hsi_calc_stretch()}},
 \code{\link[=hsi_destripe]{hsi_destripe()}},
+\code{\link[=hsi_mask]{hsi_mask()}},
 \code{\link[=hsi_remove_continuum]{hsi_remove_continuum()}},
 \code{\link[=hsi_smooth_median]{hsi_smooth_median()}},
 \code{\link[=hsi_tiled]{hsi_tiled()}},

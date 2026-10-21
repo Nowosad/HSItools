@@ -20,6 +20,18 @@
 #' histogram-equalized stretch. Supports predefined band combinations and
 #' custom wavelength selection.
 #'
+#' @details
+#' The stretch is computed over the whole frame, so the tone curve depends on
+#' everything in it, including background, mounting hardware and labels. Two
+#' captures of the same specimen framed against different backgrounds therefore
+#' receive different tone curves, and **the resulting previews are not
+#' comparable between captures**. Treat them as a look at one capture, never as
+#' evidence that two captures differ.
+#'
+#' To compare captures visually, crop each to the region of interest first and
+#' stretch the crops, so the tone curve is derived only from the pixels being
+#' compared.
+#'
 #' @examples
 #' \dontrun{
 #' x <- terra::rast("REFLECTANCE_testdata.tif")
@@ -64,20 +76,23 @@ hsi_calc_stretch <- function(
       SWIR = c(1650, 1100, 2200),
       cli::cli_abort(
         "Unknown band type: {.val {type}}",
-        i = "Use one of: RGB, NIR, CIR, SWIR, or provide numeric wavelengths."
+        i = "Use one of: RGB, NIR, CIR, SWIR, or provide numeric wavelengths.",
+        class = "hsitools_error"
       )
     )
   } else if (is.numeric(type)) {
     # Custom wavelengths
     if (length(type) != 3) {
       cli::cli_abort(
-        "Custom wavelengths must provide exactly 3 values, got {length(type)}."
+        "Custom wavelengths must provide exactly 3 values, got {length(type)}.",
+        class = "hsitools_error"
       )
     }
     spectra <- type
   } else {
     cli::cli_abort(
-      "{.arg type} must be either a character string (e.g., 'RGB') or a numeric vector of 3 wavelengths."
+      "{.arg type} must be either a character string (e.g., 'RGB') or a numeric vector of 3 wavelengths.",
+      class = "hsitools_error"
     )
   }
 
@@ -99,12 +114,18 @@ hsi_calc_stretch <- function(
         "Cannot find all required bands within tolerance of {tol} nm.",
         x = "Missing bands near: {missing_bands} nm",
         i = "Available bands: {sort(available_bands)} nm"
-      )
+      ),
+      class = "hsitools_error"
     )
   }
 
+  rlang::check_string(filename)
+
+  rlang::check_bool(overwrite)
+
   # Store user input in a spliceable list
   wopt_user <- rlang::list2(...)
+  check_dots_write(wopt_user, filename)
 
   # Named list with write options
   wopt_default <- list(

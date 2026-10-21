@@ -36,7 +36,10 @@ wavelength_position <- function(
 
   # Check if there is at least one layer
   if (length(wavelength) == 0) {
-    cli::cli_abort("{.arg wavelength} must not be empty.")
+    cli::cli_abort(
+      "{.arg wavelength} must not be empty.",
+      class = "hsitools_error"
+    )
   }
 
   # Check wavelengths
@@ -62,7 +65,7 @@ wavelength_position <- function(
 }
 
 #' Subset SpatRaster by wavelength
-#' 
+#'
 #' @noRd
 #'
 #' @param x A [`SpatRaster`][terra::SpatRaster-class] with hyperspectral data.
@@ -82,7 +85,8 @@ wavelength_sub <- function(
   # Validate input
   if (!inherits(wavelength_tbl, "data.frame")) {
     cli::cli_abort(
-      "Input {.arg wavelength_tbl} must be a data frame or tibble."
+      "Input {.arg wavelength_tbl} must be a data frame or tibble.",
+      class = "hsitools_error"
     )
   }
 
@@ -94,99 +98,6 @@ wavelength_sub <- function(
 
   # Return
   raster
-}
-
-#' Merge SpatRasters in a stratigraphic order
-#'
-#' @family Utilities
-#' @param x a terra SpatRaster. First in the sequence.
-#' @param y a terra SpatRaster. Second in the sequence.
-#' @param filename Character. Output filename. Default "" keeps in memory
-#' @param overwrite Logical
-#' @param ... further passed to writeRaster
-#'
-#' @return a terra SpatRaster. Merged inputs.
-#' @export
-hsi_merge_rasters <- function(
-  x,
-  y,
-  filename = "",
-  overwrite = FALSE,
-  ...
-) {
-  # TODO experimental fun, needs a proper refactor
-
-  # Validate input
-  if (!inherits(x, "SpatRaster")) {
-    cli::cli_abort("Input {.arg x} must be a terra SpatRaster.")
-  }
-
-  # Validate input
-  if (!inherits(y, "SpatRaster")) {
-    cli::cli_abort("Input {.arg y} must be a terra SpatRaster.")
-  }
-
-  # Get extent of the first SpatRaster
-  extent_1 <- terra::ext(x)
-
-  # Get extent of the second SpatRaster
-  extent_2 <- terra::ext(y)
-
-  # Shift second extent
-  # xmin and xmax stay the same
-  extent_2 <- terra::ext(
-    extent_2[1],
-    extent_2[2],
-    extent_1[3] - (extent_2[4] - extent_2[3]),
-    extent_1[3]
-  )
-
-  # Update extent of second SpatRaster
-  terra::ext(y) <- extent_2
-
-  # Get merged SpatRaster
-  raster <- terra::merge(x, y, filename = filename)
-
-  # Return
-  return(raster)
-}
-
-#' Find a fixed-width extent
-#'
-#' @family Utilities
-#'
-#' @param e A [`SpatExtent`][terra::SpatExtent-class] in which to search.
-#'   Created with [`terra::ext()`].
-#' @param width Numeric. Width in pixels of the new extent.
-#'
-#' @returns A [`SpatExtent`][terra::SpatExtent-class] centered within `extent`
-#'   and of the specified width.
-#'
-#' @export
-hsi_find_extent <- function(e, width) {
-  # Validate input
-  if (!inherits(e, "SpatExtent")) {
-    cli::cli_abort("Input {.arg e} must be a terra SpatExtent.")
-  }
-  # TODO, probably can work with real world units once SpatRaster is calibrated?
-
-  # Validate input
-  check_numeric(width, len = 1, positive = TRUE)
-
-  # Get mid point
-  middle_point <- terra::round((terra::xmax(e) - terra::xmin(e)) / 2)
-
-  # New xmin
-  ext.xmin <- terra::xmin(e) + middle_point - (width / 2)
-
-  # New xmax
-  ext.xmax <- terra::xmin(e) + middle_point + (width / 2)
-
-  # Update extent
-  e <- terra::ext(ext.xmin, ext.xmax, e[3], e[4])
-
-  # Return
-  e
 }
 
 #' Subset SpatRaster by wavelength
@@ -225,12 +136,22 @@ hsi_subset <- function(
 ) {
   # Validate input
   if (!inherits(x, "SpatRaster")) {
-    cli::cli_abort("Input {.arg x} must be a terra SpatRaster.")
+    cli::cli_abort(
+      "Input {.arg x} must be a terra SpatRaster.",
+      class = "hsitools_error"
+    )
   }
 
   if (!is.numeric(wavelength) || length(wavelength) == 0) {
-    cli::cli_abort("{.arg wavelength} must be a non-empty numeric vector.")
+    cli::cli_abort(
+      "{.arg wavelength} must be a non-empty numeric vector.",
+      class = "hsitools_error"
+    )
   }
+
+  rlang::check_string(filename)
+
+  rlang::check_bool(overwrite)
 
   # Find and subset
   result <- wavelength_position(x, wavelength) |>
@@ -293,16 +214,7 @@ hsi_subset_range <- function(
   check_numeric(to, len = 1, positive = TRUE)
 
   # Get wavelengths from band names
-  wavelengths <- as.numeric(terra::names(x))
-
-  if (all(is.na(wavelengths))) {
-    cli::cli_abort(
-      c(
-        "Band names cannot be converted to numeric wavelengths.",
-        "i" = "Band names are: {.val {head(terra::names(x), 5)}}..."
-      )
-    )
-  }
+  wavelengths <- check_wavelengths(x)
 
   # Find bands within range (handle inverted from/to)
   range_min <- min(from, to)
@@ -315,9 +227,14 @@ hsi_subset_range <- function(
       c(
         "No bands found in range {range_min}-{range_max} nm.",
         "i" = "Available range: {min(wavelengths)}-{max(wavelengths)} nm"
-      )
+      ),
+      class = "hsitools_error"
     )
   }
+
+  rlang::check_string(filename)
+
+  rlang::check_bool(overwrite)
 
   # Subset
   result <- terra::subset(x, indices)
@@ -353,7 +270,8 @@ to_um <- function(value, from) {
     "cm" = 10000,
     # Abort if none of the above is supplied
     cli::cli_abort(
-      "{.val {from}} is not a supported unit. Use {.or {.val {c('um', 'mm', 'cm')}}}."
+      "{.val {from}} is not a supported unit. Use {.or {.val {c('um', 'mm', 'cm')}}}.",
+      class = "hsitools_error"
     )
   )
 
@@ -381,7 +299,8 @@ from_um <- function(value, to) {
     "cm" = 0.0001,
     # Abort if none of the above is supplied
     cli::cli_abort(
-      "{.val {to}} is not a supported unit. Use {.or {.val {c('um', 'mm', 'cm')}}}."
+      "{.val {to}} is not a supported unit. Use {.or {.val {c('um', 'mm', 'cm')}}}.",
+      class = "hsitools_error"
     )
   )
 
@@ -390,4 +309,393 @@ from_um <- function(value, to) {
 
   # Return
   value
+}
+
+
+#' Construct an hsi_metadata list, unvalidated
+#'
+#' @param name Character. Capture name. A single non-empty string.
+#' @param sensor_type Character. Sensor type. Default `NULL`.
+#' @param manufacturer Character. Sensor manufacturer. Default `NULL`.
+#' @param lens Character. Lens description, e.g. focal length. Default `NULL`.
+#' @param calibration_pack Character. Calibration pack name or path. Default `NULL`.
+#' @param session_id Character. Session identifier grouping scans that share a white reference. Default `NULL`.
+#' @param operator Character. Operator full name. Default `NULL`.
+#' @param campaign_prefix Character. Campaign prefix as set in the acquisition software. Default `NULL`.
+#' @param dataset_name Character. Dataset name as entered in the acquisition software. Default `NULL`.
+#' @param nrow Positive integer. Number of raster rows. Default `NULL`.
+#' @param ncol Positive integer. Number of raster columns. Default `NULL`.
+#' @param nlyr Positive integer. Number of raster layers. Default `NULL`.
+#' @param xres Positive number. Pixel resolution in the x direction. Default `NULL`.
+#' @param yres Positive number. Pixel resolution in the y direction. Default `NULL`.
+#' @param spectral_resolution_nm Positive number. Spectral resolution in nm. Default `NULL`.
+#' @param frame_rate_hz Positive number. Frame rate in Hz. Default `NULL`.
+#' @param et_target_ms Positive number. Target integration time in ms. Default `NULL`.
+#' @param et_white_ms Positive number. White reference integration time in ms. Default `NULL`.
+#' @param target_start_mm Positive number. Motor position at scan start in mm. Default `NULL`.
+#' @param target_stop_mm Positive number. Motor position at scan end in mm. Default `NULL`.
+#' @param fov_mm Numeric. Across-track field of view in mm. Default `NULL`.
+#' @param camera_position_mm Numeric. Camera position reading in mm. Default `NULL`.
+#' @param stage_position_mm Numeric. Stage or focus-table position reading in mm. Default `NULL`.
+#' @param scanning_speed_mm_s Numeric. Along-track scanning speed in mm/s. Default `NULL`.
+#' @param aspect_ratio Positive number. Measured pixel aspect ratio (along-track / across-track). Default `NULL`.
+#' @param spectral_binning Positive integer. Spectral binning factor. Default `NULL`.
+#' @param spatial_binning Positive integer. Spatial binning factor. Default `NULL`.
+#' @param dropped_frames Numeric. Number of dropped frames reported by the acquisition software. Default `NULL`.
+#' @param gcp_count Numeric. Number of ground control points placed for co-registration. Default `NULL`.
+#' @param wavelengths Positive numeric vector. Band centre wavelengths in nm, one value per layer. Default `NULL`.
+#' @param fwhm Positive numeric vector. Band full width at half maximum in nm, one value per layer. Default `NULL`.
+#'
+#' @returns An object of class `hsi_metadata`: an unvalidated list of capture
+#'   metadata fields with `schema_version` stamped. Validation happens
+#'   separately via `validate_hsi_metadata()`.
+#'
+#' @noRd
+new_hsi_metadata <- function(
+  name,
+  sensor_type = NULL,
+  manufacturer = NULL,
+  lens = NULL,
+  calibration_pack = NULL,
+  session_id = NULL,
+  operator = NULL,
+  campaign_prefix = NULL,
+  dataset_name = NULL,
+  nrow = NULL,
+  ncol = NULL,
+  nlyr = NULL,
+  xres = NULL,
+  yres = NULL,
+  spectral_resolution_nm = NULL,
+  frame_rate_hz = NULL,
+  et_target_ms = NULL,
+  et_white_ms = NULL,
+  target_start_mm = NULL,
+  target_stop_mm = NULL,
+  fov_mm = NULL,
+  camera_position_mm = NULL,
+  stage_position_mm = NULL,
+  scanning_speed_mm_s = NULL,
+  aspect_ratio = NULL,
+  spectral_binning = NULL,
+  spatial_binning = NULL,
+  dropped_frames = NULL,
+  gcp_count = NULL,
+  wavelengths = NULL,
+  fwhm = NULL
+) {
+  # Define list and class
+  structure(
+    list(
+      schema_version = "1.1.0",
+      name = name,
+      sensor_type = sensor_type,
+      manufacturer = manufacturer,
+      lens = lens,
+      calibration_pack = calibration_pack,
+      session_id = session_id,
+      operator = operator,
+      campaign_prefix = campaign_prefix,
+      dataset_name = dataset_name,
+      nrow = nrow,
+      ncol = ncol,
+      nlyr = nlyr,
+      xres = xres,
+      yres = yres,
+      spectral_resolution_nm = spectral_resolution_nm,
+      frame_rate_hz = frame_rate_hz,
+      et_target_ms = et_target_ms,
+      et_white_ms = et_white_ms,
+      target_start_mm = target_start_mm,
+      target_stop_mm = target_stop_mm,
+      fov_mm = fov_mm,
+      camera_position_mm = camera_position_mm,
+      stage_position_mm = stage_position_mm,
+      scanning_speed_mm_s = scanning_speed_mm_s,
+      aspect_ratio = aspect_ratio,
+      spectral_binning = spectral_binning,
+      spatial_binning = spatial_binning,
+      dropped_frames = dropped_frames,
+      gcp_count = gcp_count,
+      wavelengths = wavelengths,
+      fwhm = fwhm
+    ),
+    class = "hsi_metadata"
+  )
+}
+
+#' Validate structured hyperspectral metadata
+#'
+#' @param x An object of class `hsi_metadata` to validate.
+#' @param call Environment for error reporting. Auto-detected via
+#'   [rlang::caller_env()].
+#'
+#' @returns `x`, invisibly, if validation passes; aborts otherwise.
+#'
+#' @noRd
+validate_hsi_metadata <- function(x, call = rlang::caller_env()) {
+  # Required string
+  rlang::check_string(
+    x$name,
+    allow_empty = FALSE,
+    arg = "name",
+    call = call
+  )
+
+  # Optional strings
+  rlang::check_string(
+    x$sensor_type,
+    allow_null = TRUE,
+    arg = "sensor_type",
+    call = call
+  )
+  rlang::check_string(
+    x$manufacturer,
+    allow_null = TRUE,
+    arg = "manufacturer",
+    call = call
+  )
+  rlang::check_string(
+    x$lens,
+    allow_null = TRUE,
+    arg = "lens",
+    call = call
+  )
+  rlang::check_string(
+    x$calibration_pack,
+    allow_null = TRUE,
+    arg = "calibration_pack",
+    call = call
+  )
+  rlang::check_string(
+    x$session_id,
+    allow_null = TRUE,
+    arg = "session_id",
+    call = call
+  )
+  rlang::check_string(
+    x$operator,
+    allow_null = TRUE,
+    arg = "operator",
+    call = call
+  )
+  rlang::check_string(
+    x$campaign_prefix,
+    allow_null = TRUE,
+    arg = "campaign_prefix",
+    call = call
+  )
+  rlang::check_string(
+    x$dataset_name,
+    allow_null = TRUE,
+    arg = "dataset_name",
+    call = call
+  )
+
+  # Optional positive scalars
+  check_numeric(
+    x$nrow,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "nrow",
+    call = call
+  )
+  check_numeric(
+    x$ncol,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "ncol",
+    call = call
+  )
+  check_numeric(
+    x$nlyr,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "nlyr",
+    call = call
+  )
+  check_numeric(
+    x$xres,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "xres",
+    call = call
+  )
+  check_numeric(
+    x$yres,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "yres",
+    call = call
+  )
+  check_numeric(
+    x$spectral_resolution_nm,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "spectral_resolution_nm",
+    call = call
+  )
+  check_numeric(
+    x$frame_rate_hz,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "frame_rate_hz",
+    call = call
+  )
+  check_numeric(
+    x$et_target_ms,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "et_target_ms",
+    call = call
+  )
+  check_numeric(
+    x$et_white_ms,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "et_white_ms",
+    call = call
+  )
+  check_numeric(
+    x$target_start_mm,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "target_start_mm",
+    call = call
+  )
+  check_numeric(
+    x$target_stop_mm,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "target_stop_mm",
+    call = call
+  )
+  check_numeric(
+    x$fov_mm,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "fov_mm",
+    call = call
+  )
+  check_numeric(
+    x$camera_position_mm,
+    len = 1,
+    allow_null = TRUE,
+    arg = "camera_position_mm",
+    call = call
+  )
+  check_numeric(
+    x$stage_position_mm,
+    len = 1,
+    allow_null = TRUE,
+    arg = "stage_position_mm",
+    call = call
+  )
+  check_numeric(
+    x$scanning_speed_mm_s,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "scanning_speed_mm_s",
+    call = call
+  )
+  check_numeric(
+    x$aspect_ratio,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "aspect_ratio",
+    call = call
+  )
+  check_numeric(
+    x$spectral_binning,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "spectral_binning",
+    call = call
+  )
+  check_numeric(
+    x$spatial_binning,
+    len = 1,
+    positive = TRUE,
+    allow_null = TRUE,
+    arg = "spatial_binning",
+    call = call
+  )
+  check_numeric(
+    x$dropped_frames,
+    len = 1,
+    allow_null = TRUE,
+    arg = "dropped_frames",
+    call = call
+  )
+  check_numeric(
+    x$gcp_count,
+    len = 1,
+    allow_null = TRUE,
+    arg = "gcp_count",
+    call = call
+  )
+  check_numeric(
+    x$wavelengths,
+    allow_null = TRUE,
+    positive = TRUE,
+    arg = "wavelengths",
+    call = call
+  )
+  check_numeric(
+    x$fwhm,
+    allow_null = TRUE,
+    positive = TRUE,
+    arg = "fwhm",
+    call = call
+  )
+
+  # Wavelengths length must match nlyr
+  if (
+    !is.null(x$wavelengths) &&
+      !is.null(x$nlyr) &&
+      length(x$wavelengths) != x$nlyr
+  ) {
+    cli::cli_abort(
+      c(
+        "{.arg wavelengths} must have one value per layer.",
+        "i" = "{.arg nlyr} is {x$nlyr}, but {.arg wavelengths} has length {length(x$wavelengths)}."
+      ),
+      class = "hsitools_error",
+      call = call
+    )
+  }
+
+  # FWHM length must match nlyr
+  if (
+    !is.null(x$fwhm) &&
+      !is.null(x$nlyr) &&
+      length(x$fwhm) != x$nlyr
+  ) {
+    cli::cli_abort(
+      c(
+        "{.arg fwhm} must have one value per layer.",
+        "i" = "{.arg nlyr} is {x$nlyr}, but {.arg fwhm} has length {length(x$fwhm)}."
+      ),
+      class = "hsitools_error",
+      call = call
+    )
+  }
+
+  # Return result
+  invisible(x)
 }

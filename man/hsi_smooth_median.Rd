@@ -4,22 +4,12 @@
 \alias{hsi_smooth_median}
 \title{Focal raster smooth with a median}
 \usage{
-hsi_smooth_median(
-  x,
-  window = 3,
-  cores = 1L,
-  filename = "",
-  overwrite = FALSE,
-  ...
-)
+hsi_smooth_median(x, window = 3, filename = "", overwrite = FALSE, ...)
 }
 \arguments{
 \item{x}{A \code{\link[terra:SpatRaster-class]{SpatRaster}} with hyperspectral data.}
 
 \item{window}{Positive odd integer. Focal window size. Default \code{3}.}
-
-\item{cores}{Positive integer. Number of cores for parallel processing.
-Default \code{1L} (single core). Passed to \code{\link[terra:focal]{terra::focal()}}.}
 
 \item{filename}{Character. Output filename. Default \code{""} keeps result in memory.}
 
@@ -32,6 +22,19 @@ A \code{\link[terra:SpatRaster-class]{SpatRaster}} with median filtered values.
 }
 \description{
 Focal raster smooth with a median
+}
+\details{
+\code{NA} cells are preserved rather than filled. The focal window is applied with
+\code{na.policy = "omit"}, so a cell that is already \code{NA} stays \code{NA} instead of
+taking the median of its neighbours. Cells that hold data are unaffected and
+still smooth across whichever neighbours are available, so masked input
+changes only the masked pixels.
+
+This matters when the input has been masked, for example against a saturation
+screen: a blank marks a pixel with no usable measurement, and filling it from
+its neighbours would fabricate a spectrum where the mask recorded an absence.
+Whether a blank covers one band or all of them is decided upstream, by
+whatever produced the mask; this function only declines to overwrite it.
 }
 \examples{
 \dontrun{
@@ -53,6 +56,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_difference]{hsi_calc_difference()}},
 \code{\link[=hsi_calc_mnf]{hsi_calc_mnf()}},
 \code{\link[=hsi_calc_ndi]{hsi_calc_ndi()}},
+\code{\link[=hsi_calc_preview]{hsi_calc_preview()}},
 \code{\link[=hsi_calc_raba]{hsi_calc_raba()}},
 \code{\link[=hsi_calc_rabd]{hsi_calc_rabd()}},
 \code{\link[=hsi_calc_ratio]{hsi_calc_ratio()}},
@@ -64,6 +68,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_rsd]{hsi_calc_rsd()}},
 \code{\link[=hsi_calc_stretch]{hsi_calc_stretch()}},
 \code{\link[=hsi_destripe]{hsi_destripe()}},
+\code{\link[=hsi_mask]{hsi_mask()}},
 \code{\link[=hsi_remove_continuum]{hsi_remove_continuum()}},
 \code{\link[=hsi_smooth_savgol]{hsi_smooth_savgol()}},
 \code{\link[=hsi_tiled]{hsi_tiled()}},

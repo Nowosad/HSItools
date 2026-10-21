@@ -1,14 +1,6 @@
 # Test RABD calculation ----
 # RABD = continuum / trough reflectance — values > 1 indicate absorption.
 
-## Setup ----
-test_reflectance <- terra::rast(
-  system.file(
-    package = "HSItools",
-    "testdata/products/REFLECTANCE_testdata.tif"
-  )
-)
-
 # ── Output type ──────────────────────────────────────────────────────────────
 
 test_that("hsi_calc_rabd returns a SpatRaster", {
@@ -183,6 +175,18 @@ test_that("hsi_calc_rabd errors when file exists and overwrite = FALSE", {
 
 # ── Input validation ─────────────────────────────────────────────────────────
 
+test_that("hsi_calc_rabd validates filename and overwrite", {
+  expect_write_tail_validated(
+    hsi_calc_rabd,
+    list(
+      x = test_reflectance,
+      continuum_edges = c(590, 730),
+      absorption_band = 670,
+      index_type = "strict"
+    )
+  )
+})
+
 test_that("hsi_calc_rabd errors with non-SpatRaster input", {
   expect_error(
     hsi_calc_rabd(
@@ -214,7 +218,8 @@ test_that("hsi_calc_rabd errors with invalid index_type", {
       absorption_band = 670,
       index_type = "invalid"
     ),
-    "must be one of"
+    "must be one of",
+    class = "hsitools_error"
   )
 })
 
@@ -227,5 +232,19 @@ test_that("hsi_calc_rabd errors with multiple absorption_band for index_type = '
       index_type = "strict"
     ),
     "must be length 1"
+  )
+})
+
+test_that("hsi_calc_rabd errors when an unused argument is passed without filename", {
+  expect_error(
+    hsi_calc_rabd(
+      x = test_reflectance,
+      continuum_edges = c(590, 730),
+      absorption_band = 670,
+      index_type = "strict",
+      bogus_arg = 1
+    ),
+    "not used",
+    class = "hsitools_error"
   )
 })

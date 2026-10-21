@@ -59,19 +59,20 @@ hsi_calc_rabd <- function(
   check_numeric(continuum_edges, len = 2)
 
   # Validate index type
-  if (!index_type %in% c("strict", "mid", "max")) {
-    cli::cli_abort(
-      "Input {.arg index_type} must be one of 'strict', 'mid' or 'max'."
-    )
-  }
+  check_one_of(index_type, choices = c("strict", "mid", "max"))
 
   # Validate bands for strict
   if (index_type %in% c("strict") && length(absorption_band) > 1) {
     check_numeric(absorption_band, len = 1)
   }
 
+  rlang::check_string(filename)
+
+  rlang::check_bool(overwrite)
+
   # Store user input in a spliceable list
   wopt_user <- rlang::list2(...)
+  check_dots_write(wopt_user, filename)
 
   # Named list with write options
   wopt_default <- list(

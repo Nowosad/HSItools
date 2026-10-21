@@ -7,13 +7,6 @@
 # paths. Happy-path tests use custom wavelengths within the available range.
 
 ## Setup ----
-test_reflectance <- terra::rast(
-  system.file(
-    package = "HSItools",
-    "testdata/products/REFLECTANCE_testdata.tif"
-  )
-)
-
 # Three wavelengths confirmed within the test data range (~517-772 nm)
 custom_bands <- c(700, 620, 540)
 
@@ -158,6 +151,13 @@ test_that("hsi_calc_stretch errors when file exists and overwrite = FALSE", {
 
 # ── Input validation ─────────────────────────────────────────────────────────
 
+test_that("hsi_calc_stretch validates filename and overwrite", {
+  expect_write_tail_validated(
+    hsi_calc_stretch,
+    list(x = test_reflectance, type = custom_bands)
+  )
+})
+
 test_that("hsi_calc_stretch errors with non-SpatRaster input", {
   expect_error(
     hsi_calc_stretch(x = "not a raster", type = custom_bands)
@@ -167,20 +167,35 @@ test_that("hsi_calc_stretch errors with non-SpatRaster input", {
 test_that("hsi_calc_stretch errors with unknown string type", {
   expect_error(
     hsi_calc_stretch(x = test_reflectance, type = "INVALID"),
-    "Unknown band type"
+    "Unknown band type",
+    class = "hsitools_error"
   )
 })
 
 test_that("hsi_calc_stretch errors when custom type has fewer than 3 wavelengths", {
   expect_error(
     hsi_calc_stretch(x = test_reflectance, type = c(650, 550)),
-    "exactly 3"
+    "exactly 3",
+    class = "hsitools_error"
   )
 })
 
 test_that("hsi_calc_stretch errors when custom type has more than 3 wavelengths", {
   expect_error(
     hsi_calc_stretch(x = test_reflectance, type = c(700, 660, 620, 540)),
-    "exactly 3"
+    "exactly 3",
+    class = "hsitools_error"
+  )
+})
+
+test_that("hsi_calc_stretch errors when an unused argument is passed without filename", {
+  expect_error(
+    hsi_calc_stretch(
+      x = test_reflectance,
+      type = c(700, 620, 540),
+      bogus_arg = 1
+    ),
+    "not used",
+    class = "hsitools_error"
   )
 })

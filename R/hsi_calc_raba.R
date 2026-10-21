@@ -6,6 +6,7 @@
 #' @param continuum_edges Numeric vector of length 2. Wavelength boundaries
 #'   (in nm) that define the continuum for the calculation window
 #' @param index_name Character. Name of calculated RABA index. Default NULL
+#' @param cores Positive integer. Number of parallel cores. Default `1`.
 #' @param filename Character. Output filename. Default "" keeps in memory
 #' @param overwrite Logical. Overwrite existing file (default: FALSE)
 #' @param ... Additional arguments passed to \code{\link[terra]{writeRaster}}
@@ -57,6 +58,7 @@ hsi_calc_raba <- function(
   x,
   continuum_edges,
   index_name = NULL,
+  cores = 1,
   filename = "",
   overwrite = FALSE,
   ...
@@ -66,6 +68,13 @@ hsi_calc_raba <- function(
 
   # Validate continuum edges
   check_numeric(continuum_edges, len = 2)
+
+  # Validate input
+  check_numeric(cores, len = 1, positive = TRUE)
+
+  rlang::check_string(filename)
+
+  rlang::check_bool(overwrite)
 
   # Store user input in a spliceable list
   wopt_user <- rlang::list2(...)
@@ -118,10 +127,22 @@ hsi_calc_raba <- function(
     )
   }
 
+  # Rebind the closure to a minimal environment; the body needs nothing from
+  # this call frame. Defined inline the closure would carry that frame, and
+  # `terra::app(cores = )` serializes `fun` to its workers once per write block:
+  # the frame drags `x` along, and a SpatRaster serializes to ~40 MB regardless
+  # of raster size, which measured 5.5x *slower* than single-threaded. The body
+  # needs nothing beyond `purrr::map_dbl()`, and `::` lives in base.
+  environment(calc_raba_pixel) <- rlang::new_environment(
+    data = list(),
+    parent = baseenv()
+  )
+
   # Apply function to each pixel
   result <- terra::app(
     x_range,
     fun = calc_raba_pixel,
+    cores = cores,
     filename = filename,
     overwrite = overwrite,
     wopt = wopt

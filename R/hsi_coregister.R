@@ -58,11 +58,7 @@ hsi_coregister <- function(
 
   check_spatraster(y)
 
-  if (!inherits(gcp, "data.frame")) {
-    cli::cli_abort(
-      "{.arg gcp} must be a data frame."
-    )
-  }
+  check_data_frame(gcp)
 
   # Validate coordinate columns
   coord_cols <- c("source_x", "source_y", "target_x", "target_y")
@@ -79,7 +75,8 @@ hsi_coregister <- function(
   # Check minimum of 3 GCPs
   if (nrow(gcp) < 3) {
     cli::cli_abort(
-      "Need at least 3 matched GCPs, found {nrow(gcp)}."
+      "Need at least 3 matched GCPs, found {nrow(gcp)}.",
+      class = "hsitools_error"
     )
   }
 
@@ -88,7 +85,8 @@ hsi_coregister <- function(
   # Check for collinear GCPs
   if (qr(design)$rank < 3) {
     cli::cli_abort(
-      "GCPs are collinear and affine transform cannot be fit."
+      "GCPs are collinear and affine transform cannot be fit.",
+      class = "hsitools_error"
     )
   }
 

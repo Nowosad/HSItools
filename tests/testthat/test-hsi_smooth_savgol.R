@@ -1,13 +1,6 @@
 # Test Savitzky-Golay filter ----
 
-## Setup ----
 # Load test data once for all tests in this file
-test_reflectance <- terra::rast(
-  system.file(
-    package = "HSItools",
-    "testdata/products/REFLECTANCE_testdata.tif"
-  )
-)
 
 # ── Value snapshot ───────────────────────────────────────────────────────────
 
@@ -77,6 +70,20 @@ test_that("hsi_smooth_savgol with m = 1 returns first derivative (differs from m
       terra::values(result_smooth),
       terra::values(result_deriv1)
     ))
+  )
+})
+
+test_that("hsi_smooth_savgol gives identical values on parallel workers", {
+  result_serial <- hsi_smooth_savgol(x = test_reflectance, cores = 1)
+  result_parallel <- hsi_smooth_savgol(x = test_reflectance, cores = 2)
+
+  expect_equal(
+    terra::values(result_parallel),
+    terra::values(result_serial)
+  )
+  expect_equal(
+    terra::names(result_parallel),
+    terra::names(result_serial)
   )
 })
 
@@ -153,24 +160,40 @@ test_that("hsi_smooth_savgol errors when file exists and overwrite = FALSE", {
 
 # ── Input validation ─────────────────────────────────────────────────────────
 
+test_that("hsi_smooth_savgol validates filename and overwrite", {
+  expect_write_tail_validated(
+    hsi_smooth_savgol,
+    list(x = test_reflectance)
+  )
+})
+
 test_that("hsi_smooth_savgol errors with non-SpatRaster input", {
   expect_error(
     hsi_smooth_savgol(x = "not a raster"),
-    class = "error"
+    class = "hsitools_error"
   )
 })
 
 test_that("hsi_smooth_savgol errors when p >= n", {
   expect_error(
     hsi_smooth_savgol(x = test_reflectance, p = 11, n = 11),
-    "must be less than"
+    "must be less than",
+    class = "hsitools_error"
   )
 })
 
 test_that("hsi_smooth_savgol errors when n is even", {
   expect_error(
     hsi_smooth_savgol(x = test_reflectance, p = 3, n = 10),
-    class = "error"
+    class = "hsitools_error"
+  )
+})
+
+test_that("hsi_smooth_savgol errors when cores is not a positive number", {
+  expect_error(
+    hsi_smooth_savgol(x = test_reflectance, cores = -1),
+    "must contain only positive values",
+    class = "hsitools_error"
   )
 })
 
@@ -182,6 +205,6 @@ test_that("hsi_smooth_savgol errors when filter length exceeds number of bands",
       p = 3,
       n = terra::nlyr(test_reflectance) + 2
     ),
-    class = "error"
+    class = "hsitools_error"
   )
 })

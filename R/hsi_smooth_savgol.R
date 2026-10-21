@@ -9,6 +9,7 @@
 #' @param m Integer. Derivative order. `0` for smoothing, `1` for first
 #'   derivative. Default `0`.
 #' @param ts Numeric. Sampling interval for derivative calculations. Default `1`.
+#' @param cores Positive integer. Number of parallel cores. Default `1`.
 #' @param filename Character. Output filename. Default `""` keeps result in memory.
 #' @param overwrite Logical. Overwrite existing file. Default `FALSE`.
 #' @param ... Additional arguments passed to [`terra::writeRaster()`].
@@ -33,10 +34,16 @@
 #' size are unreliable for derivatives — always compute on the full spectrum
 #' before subsetting to a wavelength range of interest.
 #'
-#' Pixels with `NA` values will cause the function to fail. For full-raster
-#' processing, [`hsi_tiled()`] can distribute the workload across parallel
-#' workers. Requires the
+#' Pixels with any `NA` value in their spectrum return `NA` in every band
+#' rather than failing — masked and background pixels pass through cleanly.
+#' For full-raster processing, [`hsi_tiled()`] can distribute the workload
+#' across parallel workers. Requires the
 #' [`gsignal`](https://CRAN.R-project.org/package=gsignal) package.
+#'
+#' Setting `cores` above `1` hands the per-pixel filter to
+#' [`terra::app()`]'s own cluster of worker processes, which splits the raster
+#' by write block. Returns flatten well before the core count is exhausted, as
+#' the output write stays serial.
 #'
 #' @examples
 #' \dontrun{
@@ -58,6 +65,7 @@ hsi_smooth_savgol <- function(
   n = p + 13 - p %% 2,
   m = 0,
   ts = 1,
+  cores = 1,
   filename = "",
   overwrite = FALSE,
   ...
@@ -71,7 +79,8 @@ hsi_smooth_savgol <- function(
   # Filter polynomial order (typically 2-4)
   if (p >= n) {
     cli::cli_abort(
-      "Filter order {.arg p} must be less than filter length {.arg n}."
+      "Filter order {.arg p} must be less than filter length {.arg n}.",
+      class = "hsitools_error"
     )
   }
 
@@ -80,16 +89,27 @@ hsi_smooth_savgol <- function(
 
   # Check if filter parameters are positive
   if (p < 0 || n < 0 || m < 0) {
-    cli::cli_abort("Filter parameters must be non-negative.")
+    cli::cli_abort(
+      "Filter parameters must be non-negative.",
+      class = "hsitools_error"
+    )
   }
 
   # Check for sufficient bands
   if (terra::nlyr(x) < n) {
     cli::cli_abort(
       "SpatRaster has {terra::nlyr(x)} bands but filter length is {n}.",
-      "i" = "Reduce filter length or use a raster with more bands."
+      "i" = "Reduce filter length or use a raster with more bands.",
+      class = "hsitools_error"
     )
   }
+
+  # Validate input
+  check_numeric(cores, len = 1, positive = TRUE)
+
+  rlang::check_string(filename)
+
+  rlang::check_bool(overwrite)
 
   # Store user input in a spliceable list
   wopt_user <- rlang::list2(...)
@@ -105,15 +125,30 @@ hsi_smooth_savgol <- function(
   # Splice wopt defaults with user input if any
   wopt <- purrr::list_modify(wopt_default, !!!wopt_user)
 
+  # Build the filter closure
+  savgol_fun <- \(x) {
+    if (anyNA(x)) {
+      return(rep(NA_real_, length(x)))
+    }
+    gsignal::sgolayfilt(as.vector(x), p = p, n = n, m = m, ts = ts)
+  }
+
+  # Rebind the closure to a minimal environment holding only the filter
+  # parameters. Defined inline the closure would carry this call frame, and
+  # `terra::app(cores = )` serializes `fun` to its workers once per write block:
+  # the frame drags `x` along, and a SpatRaster serializes to ~40 MB regardless
+  # of raster size, which measured 5.5x *slower* than single-threaded. The body
+  # needs nothing beyond `gsignal::sgolayfilt()`, and `::` lives in base.
+  environment(savgol_fun) <- rlang::new_environment(
+    data = list(p = p, n = n, m = m, ts = ts),
+    parent = baseenv()
+  )
+
   # Apply Savitzky-Golay filter
   result <- terra::app(
     x,
-    fun = \(x) {
-      if (anyNA(x)) {
-        return(rep(NA_real_, length(x)))
-      }
-      gsignal::sgolayfilt(as.vector(x), p = p, n = n, m = m, ts = ts)
-    },
+    fun = savgol_fun,
+    cores = cores,
     filename = filename,
     overwrite = overwrite,
     wopt = wopt

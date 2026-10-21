@@ -9,13 +9,6 @@
 #   - Invalid direction argument errors
 
 ## Setup ----
-test_reflectance <- terra::rast(
-  system.file(
-    package = "HSItools",
-    "testdata/products/REFLECTANCE_testdata.tif"
-  )
-)
-
 # Single-band raster for simpler structural assertions
 test_single <- terra::subset(test_reflectance, 1)
 
@@ -113,7 +106,8 @@ test_that("hsi_extract_profile warns when band name conflicts with reserved colu
 
   expect_warning(
     hsi_extract_profile(x = conflicting),
-    regexp = "conflict"
+    regexp = "conflict",
+    class = "hsitools_warning"
   )
 })
 

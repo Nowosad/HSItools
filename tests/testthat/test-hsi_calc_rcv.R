@@ -1,14 +1,6 @@
 # Test coefficient of variation of reflectance ----
 # Rcv = sd(reflectance) / mean(reflectance) per pixel across all bands.
 
-## Setup ----
-test_reflectance <- terra::rast(
-  system.file(
-    package = "HSItools",
-    "testdata/products/REFLECTANCE_testdata.tif"
-  )
-)
-
 # ── Output type ──────────────────────────────────────────────────────────────
 
 test_that("hsi_calc_rcv returns a SpatRaster", {
@@ -139,8 +131,26 @@ test_that("hsi_calc_rcv errors when file exists and overwrite = FALSE", {
 
 # ── Input validation ─────────────────────────────────────────────────────────
 
+test_that("hsi_calc_rcv validates filename and overwrite", {
+  expect_write_tail_validated(
+    hsi_calc_rcv,
+    list(x = test_reflectance)
+  )
+})
+
 test_that("hsi_calc_rcv errors with non-SpatRaster input", {
   expect_error(
     hsi_calc_rcv(x = "not a raster")
+  )
+})
+
+test_that("hsi_calc_rcv errors when an unused argument is passed without filename", {
+  expect_error(
+    hsi_calc_rcv(
+      x = test_reflectance,
+      bogus_arg = 1
+    ),
+    "not used",
+    class = "hsitools_error"
   )
 })

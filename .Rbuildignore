@@ -11,3 +11,8 @@
 ^Meta$
 ^vignettes/\.quarto$
 ^vignettes/*_files$
+^[.]?air[.]toml$
+^\.vscode$
+^dev-notes$
+^CLAUDE\.md$
+^\.claude$

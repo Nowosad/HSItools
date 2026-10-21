@@ -1,14 +1,6 @@
 # Test band ratio calculation ----
 # ratio = band1 / band2
 
-## Setup ----
-test_reflectance <- terra::rast(
-  system.file(
-    package = "HSItools",
-    "testdata/products/REFLECTANCE_testdata.tif"
-  )
-)
-
 # ── Output type ──────────────────────────────────────────────────────────────
 
 test_that("hsi_calc_ratio returns a SpatRaster", {
@@ -160,6 +152,13 @@ test_that("hsi_calc_ratio errors when file exists and overwrite = FALSE", {
 
 # ── Input validation ─────────────────────────────────────────────────────────
 
+test_that("hsi_calc_ratio validates filename and overwrite", {
+  expect_write_tail_validated(
+    hsi_calc_ratio,
+    list(x = test_reflectance, bands = c(570, 690))
+  )
+})
+
 test_that("hsi_calc_ratio errors with non-SpatRaster input", {
   expect_error(
     hsi_calc_ratio(
@@ -186,5 +185,17 @@ test_that("hsi_calc_ratio errors when bands is length 1", {
       bands = 660
     ),
     "must be length 2"
+  )
+})
+
+test_that("hsi_calc_ratio errors when an unused argument is passed without filename", {
+  expect_error(
+    hsi_calc_ratio(
+      x = test_reflectance,
+      bands = c(570, 690),
+      bogus_arg = 1
+    ),
+    "not used",
+    class = "hsitools_error"
   )
 })

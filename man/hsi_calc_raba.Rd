@@ -8,6 +8,7 @@ hsi_calc_raba(
   x,
   continuum_edges,
   index_name = NULL,
+  cores = 1,
   filename = "",
   overwrite = FALSE,
   ...
@@ -20,6 +21,8 @@ hsi_calc_raba(
 (in nm) that define the continuum for the calculation window}
 
 \item{index_name}{Character. Name of calculated RABA index. Default NULL}
+
+\item{cores}{Positive integer. Number of parallel cores. Default \code{1}.}
 
 \item{filename}{Character. Output filename. Default "" keeps in memory}
 
@@ -47,6 +50,11 @@ This approach:
 \item Accounts for unequal spacing between spectral bands
 \item Provides a measure of total absorption strength
 }
+
+Setting \code{cores} above \code{1} hands the per-pixel calculation to
+\code{\link[terra:app]{terra::app()}}'s own cluster of worker processes, which splits the raster
+by write block. Returns flatten well before the core count is exhausted, as
+the output write stays serial.
 }
 \examples{
 \dontrun{
@@ -78,6 +86,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_difference]{hsi_calc_difference()}},
 \code{\link[=hsi_calc_mnf]{hsi_calc_mnf()}},
 \code{\link[=hsi_calc_ndi]{hsi_calc_ndi()}},
+\code{\link[=hsi_calc_preview]{hsi_calc_preview()}},
 \code{\link[=hsi_calc_rabd]{hsi_calc_rabd()}},
 \code{\link[=hsi_calc_ratio]{hsi_calc_ratio()}},
 \code{\link[=hsi_calc_rcv]{hsi_calc_rcv()}},
@@ -88,6 +97,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_rsd]{hsi_calc_rsd()}},
 \code{\link[=hsi_calc_stretch]{hsi_calc_stretch()}},
 \code{\link[=hsi_destripe]{hsi_destripe()}},
+\code{\link[=hsi_mask]{hsi_mask()}},
 \code{\link[=hsi_remove_continuum]{hsi_remove_continuum()}},
 \code{\link[=hsi_smooth_median]{hsi_smooth_median()}},
 \code{\link[=hsi_smooth_savgol]{hsi_smooth_savgol()}},

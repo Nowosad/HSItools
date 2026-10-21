@@ -43,9 +43,11 @@ rescaling required.
 \details{
 For integer datatypes, values are multiplied by \code{scale_factor} before
 writing and the reciprocal is stored as GDAL scale metadata. An error is
-raised if any value exceeds the maximum storable value for the chosen
-datatype at the given scale factor. Integer storage reduces file size by
-approximately 50\% relative to float32 before compression.
+raised if any value falls outside the storable range for the chosen datatype
+at the given scale factor, in either direction. The floor matters as much as
+the ceiling: unsigned types cannot hold negative values, and GDAL clamps them
+on write without reporting how many were affected. Integer storage reduces
+file size by approximately 50\% relative to float32 before compression.
 
 For float datatypes (\code{"FLT4S"}, \code{"FLT8S"}), \code{scale_factor} has no effect
 and no range validation is performed.
@@ -83,6 +85,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_difference]{hsi_calc_difference()}},
 \code{\link[=hsi_calc_mnf]{hsi_calc_mnf()}},
 \code{\link[=hsi_calc_ndi]{hsi_calc_ndi()}},
+\code{\link[=hsi_calc_preview]{hsi_calc_preview()}},
 \code{\link[=hsi_calc_raba]{hsi_calc_raba()}},
 \code{\link[=hsi_calc_rabd]{hsi_calc_rabd()}},
 \code{\link[=hsi_calc_ratio]{hsi_calc_ratio()}},
@@ -94,6 +97,7 @@ Other HSI Transformations:
 \code{\link[=hsi_calc_rsd]{hsi_calc_rsd()}},
 \code{\link[=hsi_calc_stretch]{hsi_calc_stretch()}},
 \code{\link[=hsi_destripe]{hsi_destripe()}},
+\code{\link[=hsi_mask]{hsi_mask()}},
 \code{\link[=hsi_remove_continuum]{hsi_remove_continuum()}},
 \code{\link[=hsi_smooth_median]{hsi_smooth_median()}},
 \code{\link[=hsi_smooth_savgol]{hsi_smooth_savgol()}},

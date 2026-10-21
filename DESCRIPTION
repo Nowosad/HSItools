@@ -1,8 +1,8 @@
 Package: HSItools
 Title: Process, Analyze and Visualize Hyperspectral Core Scanning Data
-Version: 0.5.2
+Version: 0.5.3.9004
 Authors@R: c(
-    person("Maurycy", "Żarczyński", , "maurycy.zarczynski@ug.edu.pl", role = c("aut", "cre"),
+    person("Maurycy", "Żarczyński", , "maurycy.zarczynski@ug.edu.pl", role = c("aut", "cre", "cph"),
            comment = c(ORCID = "0000-0003-2989-8152")),
     person("Nicholas", "McKay", , "nicholas.mckay@nau.edu", role = "aut",
            comment = c(ORCID = "0000-0003-3598-5113")),
@@ -24,7 +24,7 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Suggests: 
-    testthat (>= 3.0.0),
+    testthat (>= 3.3.0),
     patchwork,
     knitr,
     rmarkdown,
@@ -44,11 +44,12 @@ Imports:
     tidyterra,
     purrr (>= 1.1.0),
     cli,
-    rlang,
+    rlang (>= 1.2.0),
     prospectr,
     gsignal,
     withr,
-    tibble
+    tibble,
+    yaml
 Depends: 
     R (>= 4.2.0)
 LazyData: true

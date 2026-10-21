@@ -64,11 +64,16 @@ hsi_find_extent <- function(
 
   if (nrow(points) != 2) {
     cli::cli_abort(
-      "{.arg points} must contain exactly 2 points, not {nrow(points)}."
+      "{.arg points} must contain exactly 2 points, not {nrow(points)}.",
+      class = "hsitools_error"
     )
   }
 
   check_numeric(width, len = 1, positive = TRUE)
+
+  rlang::check_string(filename)
+
+  rlang::check_bool(overwrite)
 
   # Extract coordinates from reference points
   coords <- terra::crds(points)
@@ -98,11 +103,14 @@ hsi_find_extent <- function(
   if (
     e[1] < x_ext[1] || e[2] > x_ext[2] || e[3] < x_ext[3] || e[4] > x_ext[4]
   ) {
-    cli::cli_abort(c(
-      "Requested extent exceeds raster bounds.",
-      "i" = "Width {.val {width}} px centered at column {.val {round(center_x, 1)}} does not fit within {.arg x}.",
-      "i" = "Reduce {.arg width} or adjust {.arg points}."
-    ))
+    cli::cli_abort(
+      c(
+        "Requested extent exceeds raster bounds.",
+        "i" = "Width {.val {width}} px centered at column {.val {round(center_x, 1)}} does not fit within {.arg x}.",
+        "i" = "Reduce {.arg width} or adjust {.arg points}."
+      ),
+      class = "hsitools_error"
+    )
   }
 
   # Convert to polygon

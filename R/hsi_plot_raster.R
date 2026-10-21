@@ -48,7 +48,8 @@ hsi_plot_raster <- function(x) {
 
   if (terra::nlyr(x) > 1) {
     cli::cli_abort(
-      "{.arg x} has {.val {terra::nlyr(x)}} layers. Only one is accepted."
+      "{.arg x} has {.val {terra::nlyr(x)}} layers. Only one is accepted.",
+      class = "hsitools_error"
     )
   }
 
@@ -61,7 +62,7 @@ hsi_plot_raster <- function(x) {
     ggplot2::waiver()
   }
 
-  ggplot2::ggplot(
+  plot <- ggplot2::ggplot(
     x,
     ggplot2::aes(x, y, z = value, fill = value),
     pivot = TRUE
@@ -71,4 +72,6 @@ hsi_plot_raster <- function(x) {
     ggplot2::labs(x = "", y = "") +
     ggplot2::scale_y_reverse(labels = label_fun) +
     ggplot2::coord_fixed(expand = FALSE)
+
+  plot
 }

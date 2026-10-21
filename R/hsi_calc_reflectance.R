@@ -76,7 +76,7 @@ hsi_normalize <- function(
   result
 }
 
-#' Hyperspectral reflectance raster
+#' Calculate hyperspectral reflectance
 #'
 #' @family HSI Transformations
 #'
@@ -95,13 +95,12 @@ hsi_normalize <- function(
 #'   reference and specimen capture, in that order. Default `c(1, 1)` assumes
 #'   equal integration times.
 #' @param in_memory Logical. Process entirely in RAM. Default `FALSE`.
-#'   Set `TRUE` only when data fits comfortably in available memory. When
-#'   `FALSE`, writes one temporary file per band.
+#'   Set `TRUE` only when data fits comfortably in available memory.
 #' @param filename Character. Output filename. Default `""` keeps result in memory.
 #' @param overwrite Logical. Overwrite existing file. Default `FALSE`.
 #' @param ... Additional arguments passed to [`terra::writeRaster()`].
 #'
-#' @returns A [`SpatRaster`][terra::SpatRaster-class] with normalized reflectance values.
+#' @returns A [`SpatRaster`][terra::SpatRaster-class] with reflectance values.
 #'
 #' @description
 #' Convert raw hyperspectral imaging data (digital numbers) to calibrated
@@ -112,6 +111,22 @@ hsi_normalize <- function(
 #' All inputs must share the same spatial resolution, number of bands,
 #' wavelength labels, and compatible spatial extents. When reading `.raw` ESRI
 #' data, load with `terra::rast(x, noflip = TRUE)`.
+#'
+#' Raw captures are typically integer rasters, where a value at the datatype
+#' maximum is a saturated reading rather than missing data. Subsetting such a
+#' capture with [terra::crop()] — or any operation that writes an integer copy
+#' to disk — makes terra reserve the datatype maximum as the NoData value, so
+#' saturated readings are read back as `NA`. Whether this happens depends on
+#' whether terra materialises the result to a file, so the same script can give
+#' different answers on different machines and terra versions.
+#'
+#' Set the region of interest with [terra::window()] on `x`, `whiteref` and
+#' `darkref` instead: it reads lazily from the source and writes nothing.
+#' References are usually windowed in the column direction only, since they are
+#' collapsed to per-column means. If a physical subset must be written, write it
+#' with a float datatype (for example `datatype = "FLT4S"` passed to
+#' [terra::writeRaster()] or through the `wopt` argument of [terra::crop()]) so
+#' that no integer value is repurposed as NoData.
 #'
 #' Three calibration paths are supported:
 #'
@@ -125,8 +140,8 @@ hsi_normalize <- function(
 #' specimen is overexposed relative to the white reference to maximise signal.
 #' Each subtraction uses the dark reference captured at the matching
 #' integration time. This is the recommended approach for dual-exposure
-#' scanning. For example, Lumo Scanner always captures a dark reference per session, so
-#' matched darks should be available for all standard workflows.
+#' scanning. Many scanners capture a dark reference per session, so matched
+#' darks are typically available for standard workflows.
 #'
 #' \deqn{R(\lambda) = \frac{specimen - dark_{specimen}}{white - dark_{white}}
 #'   \times \frac{t_{white}}{t_{specimen}}}
@@ -135,7 +150,7 @@ hsi_normalize <- function(
 #' dual-exposure workflows when only the white-session dark reference is
 #' available. The dark reference is scaled by the integration time ratio
 #' before numerator subtraction. This assumes dark current scales linearly
-#' with integration time. In practice, some detectors (SWIR) have a large
+#' with integration time. In practice, some detectors have a large
 #' fixed-pattern noise component that does not scale with exposure time.
 #' Scaling overestimates the specimen dark current, producing severely
 #' degraded reflectance — often negative across entire spectra. Use only as
@@ -216,7 +231,8 @@ hsi_calc_reflectance <- function(
         "x" = "Sample: {n_bands_x} band{?s}",
         "x" = "White reference: {n_bands_white} band{?s}",
         "x" = "Dark reference: {n_bands_dark} band{?s}"
-      )
+      ),
+      class = "hsitools_error"
     )
   }
 
@@ -232,22 +248,14 @@ hsi_calc_reflectance <- function(
           "Specimen dark reference must have the same number of bands as {.arg x}.",
           "x" = "Sample: {n_bands_x} band{?s}",
           "x" = "Specimen dark reference: {n_bands_darkspec} band{?s}"
-        )
+        ),
+        class = "hsitools_error"
       )
     }
   }
 
   # Validate band names are numeric wavelengths
-  wavelengths <- suppressWarnings(as.numeric(names(x)))
-
-  if (all(is.na(wavelengths))) {
-    cli::cli_abort(
-      c(
-        "Band names cannot be converted to numeric wavelengths.",
-        "i" = "Band names are: {.val {head(names(x), 5)}}..."
-      )
-    )
-  }
+  check_wavelengths(x)
 
   # Check that band names match
   bands_x <- names(x)
@@ -258,7 +266,8 @@ hsi_calc_reflectance <- function(
 
   if (!identical(bands_x, bands_white) || !identical(bands_x, bands_dark)) {
     cli::cli_warn(
-      "Band names don't match across inputs. Proceeding with band-by-band processing."
+      "Band names don't match across inputs. Proceeding with band-by-band processing.",
+      class = "hsitools_warning"
     )
   }
 
@@ -277,15 +286,21 @@ hsi_calc_reflectance <- function(
         c(
           "Scaling dark reference by integration time ratio ({.val {dark_scale}}).",
           "i" = "For best accuracy, provide {.arg darkspec} from the specimen session."
-        )
+        ),
+        class = "hsitools_warning"
       )
     }
   }
 
   f_tint <- tint[1] / tint[2]
 
+  rlang::check_string(filename)
+
+  rlang::check_bool(overwrite)
+
   # Build write options
   wopt_user <- rlang::list2(...)
+  check_dots_write(wopt_user, filename)
 
   wopt_default <- list(names = names(x))
 
@@ -324,7 +339,8 @@ hsi_calc_reflectance <- function(
       c(
         "{.arg in_memory} is {.val FALSE} but no {.arg filename} was provided.",
         "i" = "Temporary files will not be cleaned up until the R session ends. Files might persist."
-      )
+      ),
+      class = "hsitools_warning"
     )
   }
 
