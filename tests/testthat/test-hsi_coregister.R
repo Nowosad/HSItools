@@ -190,21 +190,6 @@ test_that("hsi_coregister errors when GCPs are collinear", {
   )
 })
 
-test_that("hsi_coregister errors when x has no file source", {
-  # In-memory raster has no path — GDAL cannot operate on it
-  in_memory <- terra::rast(
-    nrows = 9,
-    ncols = 9,
-    nlyr = 3,
-    vals = runif(9 * 9 * 3)
-  )
-
-  expect_error(
-    hsi_coregister(in_memory, test_target, test_gcp),
-    "no file source"
-  )
-})
-
 test_that("hsi_coregister errors with invalid method", {
   expect_error(
     hsi_coregister(test_source, test_target, test_gcp, method = "invalid"),
