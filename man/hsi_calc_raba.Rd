@@ -50,11 +50,6 @@ This approach:
 \item Accounts for unequal spacing between spectral bands
 \item Provides a measure of total absorption strength
 }
-
-Setting \code{cores} above \code{1} hands the per-pixel calculation to
-\code{\link[terra:app]{terra::app()}}'s own cluster of worker processes, which splits the raster
-by write block. Returns flatten well before the core count is exhausted, as
-the output write stays serial.
 }
 \examples{
 \dontrun{

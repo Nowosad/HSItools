@@ -8,11 +8,17 @@ test_that("hsi_calc_raba integrates the signed absorption area", {
   terra::values(x) <- matrix(reflectance, nrow = 1)
   names(x) <- as.character(wavelengths)
 
-  result <- hsi_calc_raba(x, continuum_edges = c(650, 710))
+  result <- hsi_calc_raba(x, continuum_edges = c(650, 710), cores = 1)
+  result_parallel <- hsi_calc_raba(
+    x,
+    continuum_edges = c(650, 710),
+    cores = 2
+  )
 
   # With a continuum of 1, trapezoidal areas are:
   # 1 + 3.5 + 3.5 + 1 - 0.5 - 0.5 = 8 reflectance-nm.
   expect_equal(unname(terra::values(result)[1, 1]), 8)
+  expect_equal(terra::values(result_parallel), terra::values(result))
 
   # Optional visual check:
   # continuum <- rep(1, length(wavelengths))

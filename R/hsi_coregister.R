@@ -96,6 +96,20 @@ hsi_coregister <- function(
     choices = c("near", "bilinear", "cubic", "cubicspline", "lanczos")
   )
 
+  rlang::check_string(filename)
+
+  rlang::check_bool(overwrite)
+
+  if (filename != "" && file.exists(filename) && !overwrite) {
+    cli::cli_abort(
+      c(
+        "File {.file {filename}} already exists.",
+        "i" = "Use {.arg overwrite = TRUE} to overwrite."
+      ),
+      class = "hsitools_error"
+    )
+  }
+
   # Drop CRS from both rasters - work in pixel space
   x <- hsi_drop_crs(x)
   y <- hsi_drop_crs(y)

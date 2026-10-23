@@ -1,7 +1,7 @@
 # Test hsi_coregister ----
 # Warps a source raster onto a target grid using matched GCPs via GDAL.
 # Key contracts: output always matches target grid dimensions; band names are
-# preserved both in-memory and on disk; x must have a file source.
+# preserved both in-memory and on disk.
 
 # ── Output type ───────────────────────────────────────────────────────────────
 
@@ -82,7 +82,7 @@ test_that("hsi_coregister returns a raster whose values are readable", {
   in_memory <- hsi_coregister(test_reflectance, test_target, test_gcp)
 
   expect_true(file.exists(terra::sources(written)))
-  expect_true(file.exists(terra::sources(in_memory)))
+  expect_true(terra::inMemory(in_memory))
   expect_no_error(terra::values(written))
   expect_no_error(terra::values(in_memory))
 })

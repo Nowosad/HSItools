@@ -106,42 +106,35 @@ hsi_calc_raba <- function(
     (range_wavelengths[length(range_wavelengths)] - range_wavelengths[1])
   band_widths <- diff(range_wavelengths)
 
-  # Define the per-pixel calculation function
-  calc_raba_pixel <- \(pixel_values) {
-    # Handle NA values
+  .calc_raba_pixel <- function(
+    pixel_values,
+    wavelength_fraction,
+    band_widths
+  ) {
     if (anyNA(pixel_values)) {
       return(NA_real_)
     }
 
-    # Interpolate the continuum at each wavelength
     continuum <- pixel_values[1] +
       (pixel_values[length(pixel_values)] - pixel_values[1]) *
         wavelength_fraction
 
-    # Integrate the signed area with the trapezoidal rule
     absorption <- continuum - pixel_values
     last_band <- length(absorption)
+
     sum(
       band_widths *
-        (absorption[-last_band] + absorption[-1]) / 2
+        (absorption[-last_band] + absorption[-1]) /
+        2
     )
   }
-
-  # Rebind the closure to a minimal environment; the body needs nothing from
-  # this call frame. Defined inline the closure would carry that frame, and
-  # `terra::app(cores = )` serializes `fun` to its workers once per write block:
-  # the frame drags `x` along, and a SpatRaster serializes to ~40 MB regardless
-  # of raster size, which measured 5.5x *slower* than single-threaded. The body
-  # needs nothing beyond `purrr::map_dbl()`, and `::` lives in base.
-  environment(calc_raba_pixel) <- rlang::new_environment(
-    data = list(),
-    parent = baseenv()
-  )
 
   # Apply function to each pixel
   result <- terra::app(
     x_range,
-    fun = calc_raba_pixel,
+    fun = .calc_raba_pixel,
+    wavelength_fraction = wavelength_fraction,
+    band_widths = band_widths,
     cores = cores,
     filename = filename,
     overwrite = overwrite,
